@@ -59,3 +59,6 @@ class Image:
 class GenerateImageResponse:
     data: List[Image]
     created: int = field(default_factory=lambda: time.time())
+
+    def as_dict(self):
+        return asdict(self)

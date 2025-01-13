@@ -1,8 +1,6 @@
 from flask import Blueprint, request, jsonify
-import asyncio
 import base64
 import logging
-import traceback
 import torch
 import uuid
 from io import BytesIO
@@ -46,7 +44,7 @@ class ImageGenerationAPI:
         req.validate()
         request_id = str(uuid.uuid4())
         self.stop_events[request_id] = threading.Event()
-
+        # todo 解决当客户端取消请求之后，Pipeline 不会结束的问题
         with torch.no_grad():
             resp = get_pipeline()(
                 req.prompt,
@@ -85,7 +83,7 @@ class ImageGenerationAPI:
             _images.append(Image(b64_json=img_str))
 
         response_data = GenerateImageResponse(data=_images)
-        return jsonify(asdict(response_data))
+        return jsonify(response_data.as_dict())
 
     def healthz(self):
         assert get_pipeline() is not None
