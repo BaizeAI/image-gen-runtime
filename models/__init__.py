@@ -16,7 +16,7 @@ class GenerateImageRequest:
     guidance_scale: float = 7.5
 
     def validate(self):
-        if self.model and self.model != get_config().model:
+        if self.model and self.model != get_config().served_model_name:
             raise ValueError(f'model {self.model} not found')
         ps = self.size.split('x')
         if len(ps) != 2:
