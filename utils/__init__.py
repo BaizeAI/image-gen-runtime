@@ -18,7 +18,7 @@ def parse_args():
     parser.add_argument(
         "--port",
         type=int,
-        default=5000,
+        default=8000,
         help="Port for Flask to listen on."
     )
     parser.add_argument(
