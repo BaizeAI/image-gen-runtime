@@ -16,7 +16,7 @@ class ImageGenerationAPI:
 
         # Register routes
         self.api_bp.add_url_rule('/v1/images/generations', 'generate_image', self.generate_image, methods=['POST'])
-        self.api_bp.add_url_rule('/healthz', 'healthz', self.healthz, methods=['GET'])
+        self.api_bp.add_url_rule('/health', 'health', self.healthz, methods=['GET'])
 
         # Register error handlers
         self.api_bp.register_error_handler(404, self.page_not_found)
