@@ -13,6 +13,7 @@ class ImageGenerationAPI:
     def __init__(self):
         self.api_bp = Blueprint('api', __name__)
         self.stop_events = {}
+        self.should_exit = False
 
         # Register routes
         self.api_bp.add_url_rule('/v1/images/generations', 'generate_image', self.generate_image, methods=['POST'])
@@ -30,9 +31,11 @@ class ImageGenerationAPI:
 
     def handle_exception(self, e):
         logging.error(f"Error occurred: {e.__class__.__name__}, Message: {str(e)}", exc_info=True)
-        code = 500
         if isinstance(e, (ValueError, AssertionError)):
             code = 400
+        else:
+            code = 500
+            self.should_exit = True
         return jsonify({
             "error": e.__class__.__name__,
             "message": str(e)
@@ -86,6 +89,8 @@ class ImageGenerationAPI:
         return jsonify(response_data.as_dict())
 
     def healthz(self):
+        if self.should_exit:
+            return 'Fail', 500
         assert get_pipeline() is not None
         return 'OK\n'
 
