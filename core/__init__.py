@@ -14,12 +14,12 @@ def get_pipeline():
 def init_pipeline(args):
     global _SHARED_PIPE
     if args.custom_load_pipe_script:
-        out = {}
         try:
+            out = {}
             exec(args.custom_load_pipe_script, {}, out)
+            _SHARED_PIPE = out.get('pipe', None)
         except Exception:
             traceback.print_exc()
-        _SHARED_PIPE = out.get('pipe', None)
     else:
         _SHARED_PIPE = DiffusionPipeline.from_pretrained(args.model, scheduler=scheduler).to(args.device)
     assert isinstance(_SHARED_PIPE, DiffusionPipeline), "pipeline init error, don't forget to assign pipeline to pipe var"
