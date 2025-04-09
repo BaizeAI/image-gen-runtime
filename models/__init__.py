@@ -2,6 +2,7 @@ import time
 from typing import List
 from dataclasses import dataclass, asdict, field
 from config import get_config
+import math
 
 @dataclass
 class GenerateImageRequest:
@@ -33,7 +34,7 @@ class GenerateImageRequest:
     @property
     def num_inference_steps(self):
         m = {
-            'hd': 50
+            'hd': math.ceil(10 * get_config().steps_scale)
         }
         return m[self.quality]
 
