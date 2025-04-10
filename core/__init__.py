@@ -27,6 +27,5 @@ def init_pipeline(args):
         except Exception:
             traceback.print_exc()
     else:
-        _SHARED_PIPE = DiffusionPipeline.from_pretrained(args.model, scheduler=scheduler).to(args.device)
-    # print(_SHARED_PIPE)
+        _SHARED_PIPE = DiffusionPipeline.from_pretrained(args.model).to(args.device)
     assert isinstance(_SHARED_PIPE, DiffusionPipeline), "pipeline init error, don't forget to assign pipeline to pipe var"
