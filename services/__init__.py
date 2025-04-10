@@ -3,13 +3,22 @@ from api.image_generation import ImageGenerationAPI
 from core import init_pipeline
 from utils import parse_args
 from config import init_config
+import logging
+import sys
 
 def start_service():
     args = parse_args()
     init_config(args)
-    print(f"Loading model {args.model} on device {args.device}...")
+    level = logging._nameToLevel[args.logging_level]
+    logging.basicConfig(
+        level=level,
+        format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+        stream=sys.stdout
+    )
+    logging.info(f"Loading model {args.model} on device {args.device}...")
     init_pipeline(args)
-    print("Done.")
+    logging.info(f"model {args.model} loaded")
     image_api = ImageGenerationAPI()
     app.register_blueprint(image_api.get_blueprint())
 
