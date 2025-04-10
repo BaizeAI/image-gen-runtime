@@ -6,6 +6,8 @@ class Config(NamedTuple):
     port: int
     device: str
     served_model_name: str
+    steps_scale: float
+    duplicate_scheduler: bool
 
 _config: Config = None
 
@@ -16,7 +18,9 @@ def init_config(args):
         host=args.host,
         port=args.port,
         device=args.device,
-        served_model_name=args.served_model_name
+        served_model_name=args.served_model_name,
+        steps_scale=args.steps_scale,
+        duplicate_scheduler=not args.disbale_duplicate_scheduler,
     )
 
 def get_config():

@@ -45,11 +45,13 @@ class ImageGenerationAPI:
         data = request.json or {}
         req = GenerateImageRequest(**data)
         req.validate()
+        logging.debug(f'received request: {req=}')
         request_id = str(uuid.uuid4())
         self.stop_events[request_id] = threading.Event()
         # todo 解决当客户端取消请求之后，Pipeline 不会结束的问题
         with torch.no_grad():
-            resp = get_pipeline()(
+            pipe = get_pipeline()
+            resp = pipe(
                 req.prompt,
                 height=req.height,
                 width=req.width,
