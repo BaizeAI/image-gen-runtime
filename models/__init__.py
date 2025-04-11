@@ -1,8 +1,9 @@
 import time
-from typing import List
+from typing import List, Optional
 from dataclasses import dataclass, asdict, field
 from config import get_config
 import math
+import uuid
 
 @dataclass
 class GenerateImageRequest:
@@ -15,8 +16,11 @@ class GenerateImageRequest:
 
     negative_prompt: str = ''
     guidance_scale: float = 7.5
+    id: Optional[str] = None
 
     def validate(self):
+        if self.id is None:
+            self.id = str(uuid.uuid4())
         if self.model and self.model != get_config().served_model_name:
             raise ValueError(f'model {self.model} not found')
         ps = self.size.split('x')
