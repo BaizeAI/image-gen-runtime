@@ -5,6 +5,7 @@ from utils import parse_args
 from config import init_config
 import logging
 import sys
+import uvicorn
 
 def start_service():
     args = parse_args()
@@ -20,6 +21,6 @@ def start_service():
     init_pipeline(args)
     logging.info(f"model {args.model} loaded")
     image_api = ImageGenerationAPI()
-    app.register_blueprint(image_api.get_blueprint())
+    app.include_router(image_api.get_router())
 
-    app.run(host=args.host, port=args.port, threaded=True)
+    uvicorn.run(app, host=args.host, port=args.port)

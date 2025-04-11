@@ -3,6 +3,7 @@ from typing import List
 from dataclasses import dataclass, asdict, field
 from config import get_config
 import math
+import uuid
 
 @dataclass
 class GenerateImageRequest:
@@ -15,6 +16,7 @@ class GenerateImageRequest:
 
     negative_prompt: str = ''
     guidance_scale: float = 7.5
+    id: str = str(uuid.uuid4())
 
     def validate(self):
         if self.model and self.model != get_config().served_model_name:

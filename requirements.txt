@@ -2,7 +2,8 @@ torch==2.6.0
 transformers==4.51.1
 # for hidream
 -e git+https://github.com/hlky/diffusers@642203ebcc2a2217987c38041d7bd5cda3cdb111#egg=diffusers
-flask[async]==3.1.0
+fastapi==0.115.12
+uvicorn==0.29.0
 accelerate
 protobuf
 sentencepiece

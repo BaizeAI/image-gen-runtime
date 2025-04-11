@@ -1,109 +1,99 @@
-from flask import Blueprint, request, jsonify
+from fastapi import APIRouter, Request, HTTPException
+from fastapi.responses import JSONResponse
 import base64
 import logging
 import torch
 import uuid
 from io import BytesIO
 import threading
-import queue
-from concurrent.futures import Future
-import atexit
+from typing import Optional
+import asyncio
+import functools
 
 from models import GenerateImageRequest, Image, GenerateImageResponse
 from core import get_pipeline
 
 
+async def listen_for_disconnect(request: Request) -> None:
+    """Returns if a disconnect message is received"""
+    while True:
+        message = await request.receive()
+        if message["type"] == "http.disconnect":
+            break
+
+
+def with_cancellation(handler_func):
+    # Functools.wraps is required for this wrapper to appear to fastapi as a
+    # normal route handler, with the correct request type hinting.
+    @functools.wraps(handler_func)
+    async def wrapper(*args, **kwargs):
+
+        # The request is either the second positional arg or `raw_request`
+        request = args[1] if len(args) > 1 else kwargs["raw_request"]
+
+        cancellation_task = asyncio.create_task(listen_for_disconnect(request))
+        handler_task = asyncio.create_task(handler_func(*args, **kwargs))
+
+        done, pending = await asyncio.wait([handler_task, cancellation_task],
+                                           return_when=asyncio.FIRST_COMPLETED)
+        for task in pending:
+            task.cancel()
+
+        if handler_task in done:
+            return handler_task.result()
+        return None
+
+    return wrapper
+
+
 class ImageGenerationAPI:
-    """REST API —— 顺序（非并发）图片生成服务。
-
-    原理：
-        - 主线程（HTTP 视图）只负责把请求放进队列并同步等待结果；
-        - 后台 worker 线程串行消费队列，确保同一时间只有一个生成任务在跑。
-        - 若队列已满直接返回 429，避免无限堆积。
-    """
-
-    # 全局任务队列（可按需调大 / 调小 maxsize）
-    _job_q: "queue.Queue[tuple[GenerateImageRequest, Future]]" = queue.Queue(maxsize=32)
-
     def __init__(self):
-        # Flask Blueprint
-        self.api_bp = Blueprint('api', __name__)
+        self.router = APIRouter()
         self.should_exit = False
 
-        self.api_bp.add_url_rule('/v1/images/generations', 'generate_image', self.generate_image, methods=['POST'])
-        self.api_bp.add_url_rule('/health', 'health', self.healthz, methods=['GET'])
+        self.router.add_api_route('/v1/images/generations', self.generate_image, methods=['POST'])
+        self.router.add_api_route('/health', self.healthz, methods=['GET'])
+        self.lock = asyncio.Lock()
 
-        self.api_bp.register_error_handler(404, self.page_not_found)
-        self.api_bp.register_error_handler(Exception, self.handle_exception)
 
-        self._worker = threading.Thread(target=self._worker_loop, name="image-generator-worker", daemon=True)
-        self._worker.start()
-        atexit.register(self.shutdown)  # 进程退出前优雅关停
-
-    def page_not_found(self, e):
-        return jsonify({
-            "error": "Resource not found",
-            "message": "The requested URL was not found on the server."
-        }), 404
-
-    def handle_exception(self, e):
-        logging.error(f"Error occurred: {e.__class__.__name__}, Message: {str(e)}", exc_info=True)
-        code = 400 if isinstance(e, (ValueError, AssertionError)) else 500
-        if code == 500:
-            self.should_exit = True
-        return jsonify({
-            "error": e.__class__.__name__,
-            "message": str(e)
-        }), code
-
-    def generate_image(self):
-        """POST /v1/images/generations
-
-        接收生成请求 -> 丢进队列 -> 阻塞等待 worker 返回结果。
-        若队列已满返回 429。"""
-        data = request.json or {}
-        req = GenerateImageRequest(**data)
+    @with_cancellation
+    async def generate_image(self, request: GenerateImageRequest, raw_request: Request):
+        req = request
         req.validate()
         logging.debug(f"received request: {req=}")
+        cancel_ev = threading.Event()
+        async with self.lock:
+            try:
+                images = await asyncio.to_thread(self._do_generate, req, cancel_ev)
+                _images = []
+                for image in images:
+                    buffered = BytesIO()
+                    image.save(buffered, format="PNG")
+                    img_str = base64.b64encode(buffered.getvalue()).decode('utf-8')
+                    _images.append(Image(b64_json=img_str))
 
-        fut: Future = Future()
-        try:
-            # 若队列已满抛 queue.Full
-            self._job_q.put_nowait((req, fut))
-        except queue.Full:
-            return jsonify({
-                "error": "queue_full",
-                "message": "Server busy, try again later."
-            }), 429
+                response_data = GenerateImageResponse(data=_images)
+                return response_data.as_dict()
+            except asyncio.CancelledError:
+                logging.info(f'req({req.id=}) aborted')
+                cancel_ev.set()
 
-        # 同步等待结果 / 异常
-        try:
-            images = fut.result()  # 阻塞直到 worker 调用 set_result / set_exception
-        except Exception as e:
-            # 把异常继续交给统一处理
-            raise e
-
-        # 编码并返回
-        _images = []
-        for image in images:
-            buf = BytesIO()
-            image.save(buf, format="PNG")
-            _images.append(Image(b64_json=base64.b64encode(buf.getvalue()).decode()))
-
-        return jsonify(GenerateImageResponse(data=_images).as_dict())
-
-    def healthz(self):
+    async def healthz(self):
         if self.should_exit:
-            return 'Fail', 500
+            raise HTTPException(status_code=500, detail="Fail")
         assert get_pipeline() is not None
-        return 'OK\n'
+        return "OK"
 
-    def get_blueprint(self):
-        return self.api_bp
+    def get_router(self):
+        return self.router
 
     @staticmethod
-    def _do_generate(req: GenerateImageRequest):
+    def _do_generate(req: GenerateImageRequest, cancel_event: threading.Event):
         """真正的图片生成逻辑（与原代码保持一致）。"""
+        def callback(pipeline, i, t, callback_kwargs):
+            if cancel_event.is_set():
+                pipeline._interrupt = True
+            return callback_kwargs
         with torch.no_grad():
             pipe = get_pipeline()
             resp = pipe(
@@ -114,29 +104,6 @@ class ImageGenerationAPI:
                 num_images_per_prompt=req.n,
                 num_inference_steps=req.num_inference_steps,
                 guidance_scale=req.guidance_scale,
+                callback_on_step_end=callback,
             )
         return resp.images
-
-    def _worker_loop(self):
-        """后台线程：顺序消费任务队列。"""
-        while True:
-            item = self._job_q.get()  # 阻塞等待
-            if item is None:
-                break  # 收到毒丸退出
-            req, fut = item
-            try:
-                images = self._do_generate(req)
-                fut.set_result(images)
-            except Exception as e:
-                fut.set_exception(e)
-            finally:
-                self._job_q.task_done()
-
-    def shutdown(self):
-        """进程退出时优雅关闭 worker。"""
-        try:
-            self._job_q.put_nowait(None)
-        except queue.Full:
-            pass
-        if self._worker.is_alive():
-            self._worker.join(timeout=5)
