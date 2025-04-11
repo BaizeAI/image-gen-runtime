@@ -60,13 +60,19 @@ class ImageGenerationAPI:
     async def generate_image(self, request: GenerateImageRequest, raw_request: Request):
         req = request
         req.validate()
-        logging.debug(f"received request: {req=}")
-        cancel_ev = threading.Event()
+        logging.info(f"received request: {req=}")
         async with self.lock:
+            cancel_ev = threading.Event()
+            done_ev = threading.Event()
             try:
-                images = await asyncio.to_thread(self._do_generate, req, cancel_ev)
+                logging.debug(f'req({req.id=}) started')
+                cancel_ev.clear()
+                images = await asyncio.to_thread(self._do_generate, req, cancel_ev, done_ev)
                 _images = []
                 for image in images:
+                    # f = f'/tmp/{req.id}.png'
+                    # image.save(f)
+                    # logging.debug(f'save image to {f}')
                     buffered = BytesIO()
                     image.save(buffered, format="PNG")
                     img_str = base64.b64encode(buffered.getvalue()).decode('utf-8')
@@ -77,6 +83,7 @@ class ImageGenerationAPI:
             except asyncio.CancelledError:
                 logging.info(f'req({req.id=}) aborted')
                 cancel_ev.set()
+            done_ev.wait()
 
     async def healthz(self):
         if self.should_exit:
@@ -87,9 +94,7 @@ class ImageGenerationAPI:
     def get_router(self):
         return self.router
 
-    @staticmethod
-    def _do_generate(req: GenerateImageRequest, cancel_event: threading.Event):
-        """真正的图片生成逻辑（与原代码保持一致）。"""
+    def _do_generate(self, req: GenerateImageRequest, cancel_event: threading.Event, done_event: threading.Event):
         def callback(pipeline, i, t, callback_kwargs):
             if cancel_event.is_set():
                 pipeline._interrupt = True
@@ -106,4 +111,6 @@ class ImageGenerationAPI:
                 guidance_scale=req.guidance_scale,
                 callback_on_step_end=callback,
             )
-        return resp.images
+            # to make sure that previous pipe finished.
+            done_event.set()
+            return resp.images
