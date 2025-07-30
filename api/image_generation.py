@@ -12,6 +12,7 @@ import functools
 
 from models import GenerateImageRequest, Image, GenerateImageResponse
 from core import get_pipeline
+from metrics import track_request_metrics, track_inference_metrics, HEALTH_CHECK_COUNT
 
 
 async def listen_for_disconnect(request: Request) -> None:
@@ -56,6 +57,7 @@ class ImageGenerationAPI:
         self.lock = asyncio.Lock()
 
 
+    @track_request_metrics('image_generation')
     @with_cancellation
     async def generate_image(self, request: GenerateImageRequest, raw_request: Request):
         req = request
@@ -87,13 +89,16 @@ class ImageGenerationAPI:
 
     async def healthz(self):
         if self.should_exit:
+            HEALTH_CHECK_COUNT.labels(status='failure').inc()
             raise HTTPException(status_code=500, detail="Fail")
         assert get_pipeline() is not None
+        HEALTH_CHECK_COUNT.labels(status='success').inc()
         return "OK"
 
     def get_router(self):
         return self.router
 
+    @track_inference_metrics
     def _do_generate(self, req: GenerateImageRequest, cancel_event: threading.Event, done_event: threading.Event):
         def callback(pipeline, i, t, callback_kwargs):
             if cancel_event.is_set():

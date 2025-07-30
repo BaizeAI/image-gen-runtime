@@ -1,6 +1,7 @@
 from diffusers import DiffusionPipeline
 import traceback
 from config import get_config
+from metrics import track_pipeline_load
 
 _SHARED_PIPE = None
 
@@ -15,6 +16,7 @@ def get_pipeline():
         p = _SHARED_PIPE
     return p
 
+@track_pipeline_load
 def init_pipeline(args):
     global _SHARED_PIPE
     if args.custom_load_pipe_script:

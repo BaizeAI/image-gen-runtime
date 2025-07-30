@@ -3,6 +3,7 @@ from api.image_generation import ImageGenerationAPI
 from core import init_pipeline
 from utils import parse_args
 from config import init_config
+from metrics import set_server_info
 import logging
 import sys
 import uvicorn
@@ -10,6 +11,10 @@ import uvicorn
 def start_service():
     args = parse_args()
     init_config(args)
+    
+    # Set server info for metrics
+    set_server_info(args.model, args.device, args.host, args.port)
+    
     level = logging._nameToLevel[args.logging_level]
     logging.basicConfig(
         level=level,
