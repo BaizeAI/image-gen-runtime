@@ -2,6 +2,22 @@
 
 This document describes the Prometheus metrics exposed by the image generation service.
 
+## Configuration
+
+### Metrics Prefix
+
+All metrics are prefixed with a configurable namespace. By default, metrics use the `image_gen:` prefix.
+
+You can customize the prefix using the `METRICS_PREFIX` environment variable:
+
+```bash
+export METRICS_PREFIX="my_app:"
+# or
+METRICS_PREFIX="custom_prefix:" python main.py
+```
+
+**Default**: `image_gen:`
+
 ## Metrics Endpoint
 
 The service exposes metrics at `/metrics` endpoint in standard Prometheus format.
@@ -14,59 +30,59 @@ curl http://localhost:8000/metrics
 
 ### Request Metrics
 
-#### `image_generation_requests_total`
+#### `image_gen:image_generation_requests_total`
 - **Type**: Counter
 - **Description**: Total number of image generation requests
 - **Labels**:
   - `endpoint`: The API endpoint (e.g., "image_generation", "health_check")
   - `status`: Request outcome ("success" or "error")
 
-#### `image_generation_request_duration_seconds`
+#### `image_gen:image_generation_request_duration_seconds`
 - **Type**: Histogram
 - **Description**: Duration of image generation requests in seconds
 - **Labels**:
   - `endpoint`: The API endpoint
 
-#### `image_generation_active_requests`
+#### `image_gen:image_generation_active_requests`
 - **Type**: Gauge
 - **Description**: Number of currently active image generation requests
 
 ### Image Generation Metrics
 
-#### `images_generated_total`
+#### `image_gen:images_generated_total`
 - **Type**: Counter
 - **Description**: Total number of images successfully generated
 
-#### `inference_duration_seconds`
+#### `image_gen:inference_duration_seconds`
 - **Type**: Histogram
 - **Description**: Time taken for image inference in seconds
 - **Labels**:
   - `quality`: Image quality setting (e.g., "hd")
   - `size`: Image dimensions (e.g., "512x512", "1024x768")
 
-#### `request_image_size_pixels`
+#### `image_gen:request_image_size_pixels`
 - **Type**: Histogram
 - **Description**: Distribution of requested image sizes in pixels
 - **Buckets**: 256², 512², 768², 1024², 1536², 2048²
 
-#### `inference_steps_count`
+#### `image_gen:inference_steps_count`
 - **Type**: Histogram  
 - **Description**: Distribution of inference steps used in generation
 - **Buckets**: 10, 20, 30, 40, 50, 75, 100
 
 ### Pipeline Metrics
 
-#### `pipeline_load_duration_seconds`
+#### `image_gen:pipeline_load_duration_seconds`
 - **Type**: Histogram
 - **Description**: Time taken to load the diffusion pipeline model
 
-#### `pipeline_memory_usage_bytes`
+#### `image_gen:pipeline_memory_usage_bytes`
 - **Type**: Gauge
 - **Description**: Current memory usage by the pipeline (when available)
 
 ### Health Check Metrics
 
-#### `health_checks_total`
+#### `image_gen:health_checks_total`
 - **Type**: Counter
 - **Description**: Total number of health check requests
 - **Labels**:
@@ -74,7 +90,7 @@ curl http://localhost:8000/metrics
 
 ### Server Information
 
-#### `server_info`
+#### `image_gen:server_info`
 - **Type**: Info
 - **Description**: Static information about the server
 - **Labels**:
@@ -88,42 +104,42 @@ curl http://localhost:8000/metrics
 
 ### Request Rate
 ```promql
-rate(image_generation_requests_total[5m])
+rate(image_gen:image_generation_requests_total[5m])
 ```
 
 ### Error Rate
 ```promql
-rate(image_generation_requests_total{status="error"}[5m]) / rate(image_generation_requests_total[5m])
+rate(image_gen:image_generation_requests_total{status="error"}[5m]) / rate(image_gen:image_generation_requests_total[5m])
 ```
 
 ### Average Request Duration
 ```promql
-rate(image_generation_request_duration_seconds_sum[5m]) / rate(image_generation_request_duration_seconds_count[5m])
+rate(image_gen:image_generation_request_duration_seconds_sum[5m]) / rate(image_gen:image_generation_request_duration_seconds_count[5m])
 ```
 
 ### 95th Percentile Response Time
 ```promql
-histogram_quantile(0.95, rate(image_generation_request_duration_seconds_bucket[5m]))
+histogram_quantile(0.95, rate(image_gen:image_generation_request_duration_seconds_bucket[5m]))
 ```
 
 ### Images Generated Per Second
 ```promql
-rate(images_generated_total[5m])
+rate(image_gen:images_generated_total[5m])
 ```
 
 ### Average Inference Time by Quality
 ```promql
-rate(inference_duration_seconds_sum[5m]) / rate(inference_duration_seconds_count[5m]) by (quality)
+rate(image_gen:inference_duration_seconds_sum[5m]) / rate(image_gen:inference_duration_seconds_count[5m]) by (quality)
 ```
 
 ### Active Requests
 ```promql
-image_generation_active_requests
+image_gen:image_generation_active_requests
 ```
 
 ### Pipeline Load Time
 ```promql
-pipeline_load_duration_seconds
+image_gen:pipeline_load_duration_seconds
 ```
 
 ## Alerting Examples
@@ -131,7 +147,7 @@ pipeline_load_duration_seconds
 ### High Error Rate
 ```yaml
 - alert: HighImageGenerationErrorRate
-  expr: rate(image_generation_requests_total{status="error"}[5m]) / rate(image_generation_requests_total[5m]) > 0.1
+  expr: rate(image_gen:image_generation_requests_total{status="error"}[5m]) / rate(image_gen:image_generation_requests_total[5m]) > 0.1
   for: 5m
   labels:
     severity: warning
@@ -143,7 +159,7 @@ pipeline_load_duration_seconds
 ### High Response Time
 ```yaml
 - alert: HighImageGenerationLatency
-  expr: histogram_quantile(0.95, rate(image_generation_request_duration_seconds_bucket[5m])) > 30
+  expr: histogram_quantile(0.95, rate(image_gen:image_generation_request_duration_seconds_bucket[5m])) > 30
   for: 5m
   labels:
     severity: warning  
@@ -155,7 +171,7 @@ pipeline_load_duration_seconds
 ### Service Health Check Failures
 ```yaml
 - alert: ImageGenerationServiceUnhealthy
-  expr: rate(health_checks_total{status="failure"}[5m]) > 0
+  expr: rate(image_gen:health_checks_total{status="failure"}[5m]) > 0
   for: 2m
   labels:
     severity: critical
@@ -168,7 +184,7 @@ pipeline_load_duration_seconds
 
 You can create a Grafana dashboard to visualize these metrics. Key panels to include:
 
-1. **Request Rate**: `rate(image_generation_requests_total[5m])`
+1. **Request Rate**: `rate(image_gen:image_generation_requests_total[5m])`
 2. **Error Rate**: Error rate calculation as shown above
 3. **Response Time Distribution**: Histogram of request durations
 4. **Active Requests**: Current active request gauge

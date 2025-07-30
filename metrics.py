@@ -1,74 +1,82 @@
 """
 Prometheus metrics for image generation service.
 """
+import os
 import time
 from typing import Callable, Any
 from functools import wraps
 from prometheus_client import Counter, Histogram, Gauge, Info
 
+# Get metrics prefix from environment variable, default to 'image_gen:'
+METRICS_PREFIX = os.getenv('METRICS_PREFIX', 'image_gen:')
+
+def _metric_name(name: str) -> str:
+    """Add prefix to metric name."""
+    return f"{METRICS_PREFIX}{name}"
+
 
 # Image generation metrics
 REQUEST_COUNT = Counter(
-    'image_generation_requests_total', 
+    _metric_name('image_generation_requests_total'), 
     'Total image generation requests',
     ['endpoint', 'status']
 )
 
 REQUEST_DURATION = Histogram(
-    'image_generation_request_duration_seconds',
+    _metric_name('image_generation_request_duration_seconds'),
     'Image generation request duration',
     ['endpoint']
 )
 
 ACTIVE_REQUESTS = Gauge(
-    'image_generation_active_requests',
+    _metric_name('image_generation_active_requests'),
     'Number of active image generation requests'
 )
 
 IMAGES_GENERATED = Counter(
-    'images_generated_total',
+    _metric_name('images_generated_total'),
     'Total number of images generated'
 )
 
 # Pipeline metrics  
 PIPELINE_LOAD_DURATION = Histogram(
-    'pipeline_load_duration_seconds',
+    _metric_name('pipeline_load_duration_seconds'),
     'Time taken to load the pipeline model'
 )
 
 INFERENCE_DURATION = Histogram(
-    'inference_duration_seconds', 
+    _metric_name('inference_duration_seconds'), 
     'Time taken for image inference',
     ['quality', 'size']
 )
 
 PIPELINE_MEMORY_USAGE = Gauge(
-    'pipeline_memory_usage_bytes',
+    _metric_name('pipeline_memory_usage_bytes'),
     'Memory usage by the pipeline'
 )
 
 # Health check metrics
 HEALTH_CHECK_COUNT = Counter(
-    'health_checks_total',
+    _metric_name('health_checks_total'),
     'Total health check requests', 
     ['status']
 )
 
 # Server info
 SERVER_INFO = Info(
-    'server_info',
+    _metric_name('server_info'),
     'Server information'
 )
 
 # Request size metrics
 REQUEST_SIZE_HISTOGRAM = Histogram(
-    'request_image_size_pixels',
+    _metric_name('request_image_size_pixels'),
     'Histogram of requested image sizes',
     buckets=[256*256, 512*512, 768*768, 1024*1024, 1536*1536, 2048*2048]
 )
 
 INFERENCE_STEPS_HISTOGRAM = Histogram(
-    'inference_steps_count',
+    _metric_name('inference_steps_count'),
     'Histogram of inference steps used',
     buckets=[10, 20, 30, 40, 50, 75, 100]
 )
