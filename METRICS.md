@@ -60,10 +60,11 @@ curl http://localhost:8000/metrics
   - `quality`: Image quality setting (e.g., "hd")
   - `size`: Image dimensions (e.g., "512x512", "1024x768")
 
-#### `image_gen:request_image_size_pixels`
-- **Type**: Histogram
-- **Description**: Distribution of requested image sizes in pixels
-- **Buckets**: 256², 512², 768², 1024², 1536², 2048²
+#### `image_gen:request_image_size_total`
+- **Type**: Counter
+- **Description**: Total number of requests by image size
+- **Labels**:
+  - `size`: Image dimensions (e.g., "512x512", "1024x768")
 
 #### `image_gen:inference_steps_count`
 - **Type**: Histogram  

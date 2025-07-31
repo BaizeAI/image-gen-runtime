@@ -80,10 +80,10 @@ SERVER_INFO = Info(
 )
 
 # Request size metrics
-REQUEST_SIZE_HISTOGRAM = Histogram(
-    _metric_name('request_image_size_pixels'),
-    'Histogram of requested image sizes',
-    ['model_name', 'size']  # Put size into label instead of using buckets
+REQUEST_SIZE_COUNTER = Counter(
+    _metric_name('request_image_size_total'),
+    'Total number of requests by image size',
+    ['model_name', 'size']  # Size in format like "512x512"
 )
 
 INFERENCE_STEPS_HISTOGRAM = Histogram(
@@ -140,7 +140,7 @@ def track_inference_metrics(func: Callable) -> Callable:
         if req:
             # Use size in label format (e.g. "512x512")
             size_label = f"{req.width}x{req.height}"
-            REQUEST_SIZE_HISTOGRAM.labels(model_name=MODEL_NAME, size=size_label).observe(req.width * req.height)
+            REQUEST_SIZE_COUNTER.labels(model_name=MODEL_NAME, size=size_label).inc()
             INFERENCE_STEPS_HISTOGRAM.labels(model_name=MODEL_NAME).observe(req.num_inference_steps)
         
         start_time = time.time()
