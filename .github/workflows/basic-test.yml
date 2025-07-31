@@ -26,26 +26,19 @@ jobs:
         
     - name: Start server in background
       run: |
-        python main.py --model "sd-legacy/stable-diffusion-v1-5" --device cpu --steps-scale 1 &
-        echo $! > server.pid
+        python main.py --model "sd-legacy/stable-diffusion-v1-5" --device cpu --steps-scale 1 | tee server.log &
         timeout 600 bash -c 'until curl -f http://localhost:8000/health; do sleep 2; done'
-                
-    - name: Test metrics endpoint
-      run: |
-        curl -f http://localhost:8000/metrics
-        
+    
     - name: Test image generation
       run: |
+        tail -f server.log &
         curl -f -X POST http://localhost:8000/v1/images/generations \
           -H "Content-Type: application/json" \
           -d '{
             "prompt": "a simple test image",
             "model": "sd-legacy/stable-diffusion-v1-5"
           }' | jq '.data[0].b64_json' | wc -c | awk '{if($1 > 100) print "SUCCESS: Image generated"; else {print "FAILED: Image too small"; exit 1}}'
-          
-    - name: Stop server
-      if: always()
+                  
+    - name: Test metrics endpoint
       run: |
-        if [ -f server.pid ]; then
-          kill $(cat server.pid) || true
-        fi
+        curl -f http://localhost:8000/metrics
