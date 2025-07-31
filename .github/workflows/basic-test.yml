@@ -26,12 +26,12 @@ jobs:
         
     - name: Start server in background
       run: |
-        python main.py --model "hf-internal-testing/tiny-stable-diffusion-pipe" --device cpu &
+        python main.py --model "sd-legacy/stable-diffusion-v1-5" --device cpu --steps-scale 1 &
         echo $! > server.pid
         
     - name: Wait for server to be ready
       run: |
-        timeout 60 bash -c 'until curl -f http://localhost:8000/health; do sleep 2; done'
+        timeout 600 bash -c 'until curl -f http://localhost:8000/health; do sleep 2; done'
         
     - name: Test metrics endpoint
       run: |
@@ -43,10 +43,7 @@ jobs:
           -H "Content-Type: application/json" \
           -d '{
             "prompt": "a simple test image",
-            "width": 256,
-            "height": 256,
-            "num_inference_steps": 1,
-            "n": 1
+            "model": "sd-legacy/stable-diffusion-v1-5"
           }' | jq '.data[0].b64_json' | wc -c | awk '{if($1 > 100) print "SUCCESS: Image generated"; else {print "FAILED: Image too small"; exit 1}}'
           
     - name: Stop server
