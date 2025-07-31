@@ -33,7 +33,8 @@ REQUEST_COUNT = Counter(
 REQUEST_DURATION = Histogram(
     _metric_name('image_generation_request_duration_seconds'),
     'Image generation request duration',
-    ['model_name', 'endpoint']
+    ['model_name', 'endpoint'],
+    buckets=[5, 10, 30, 60, 120, 300, 600, float('inf')]
 )
 
 ACTIVE_REQUESTS = Gauge(
@@ -59,7 +60,8 @@ PIPELINE_LOAD_DURATION = Histogram(
 INFERENCE_DURATION = Histogram(
     _metric_name('inference_duration_seconds'), 
     'Time taken for image inference',
-    ['model_name', 'quality', 'size']
+    ['model_name', 'quality', 'size'],
+    buckets=[2, 5, 10, 30, 60, 120, 300, 600, float('inf')]
 )
 
 PIPELINE_MEMORY_USAGE = Gauge(
