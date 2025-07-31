@@ -12,7 +12,7 @@ import functools
 
 from models import GenerateImageRequest, Image, GenerateImageResponse
 from core import get_pipeline
-from metrics import track_request_metrics, track_inference_metrics, HEALTH_CHECK_COUNT
+from metrics import track_request_metrics, track_inference_metrics
 
 
 async def listen_for_disconnect(request: Request) -> None:
@@ -89,10 +89,8 @@ class ImageGenerationAPI:
 
     async def healthz(self):
         if self.should_exit:
-            HEALTH_CHECK_COUNT.labels(status='failure').inc()
             raise HTTPException(status_code=500, detail="Fail")
         assert get_pipeline() is not None
-        HEALTH_CHECK_COUNT.labels(status='success').inc()
         return "OK"
 
     def get_router(self):

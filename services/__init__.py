@@ -12,8 +12,8 @@ def start_service():
     args = parse_args()
     init_config(args)
     
-    # Set server info for metrics
-    set_server_info(args.model, args.device, args.host, args.port)
+    # Set server info for metrics using served_model_name
+    set_server_info(args.served_model_name, args.device, args.host, args.port)
     
     level = logging._nameToLevel[args.logging_level]
     logging.basicConfig(
