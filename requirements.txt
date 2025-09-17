@@ -1,7 +1,7 @@
 torch==2.7.1
 transformers==4.51.1
 # for hidream
--e git+https://github.com/hlky/diffusers@642203ebcc2a2217987c38041d7bd5cda3cdb111#egg=diffusers
+# -e git+https://github.com/hlky/diffusers@642203ebcc2a2217987c38041d7bd5cda3cdb111#egg=diffusers
 fastapi==0.115.13
 uvicorn==0.29.0
 accelerate
@@ -10,3 +10,4 @@ sentencepiece
 einops==0.8.1
 # flash_attn==2.7.4.post1
 prometheus_client==0.21.0
+diffusers==0.35.1
