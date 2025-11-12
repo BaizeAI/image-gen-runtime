@@ -1,4 +1,4 @@
-torch==2.7.1
+torch==2.9.1
 transformers==4.51.1
 # for hidream
 # -e git+https://github.com/hlky/diffusers@642203ebcc2a2217987c38041d7bd5cda3cdb111#egg=diffusers
