@@ -1,4 +1,5 @@
 from diffusers import DiffusionPipeline
+import cache_dit
 import traceback
 from config import get_config
 from metrics import track_pipeline_load
@@ -29,5 +30,10 @@ def init_pipeline(args):
         except Exception:
             traceback.print_exc()
     else:
-        _SHARED_PIPE = DiffusionPipeline.from_pretrained(args.model).to(args.device)
+        if args.device == 'cpu':
+            _SHARED_PIPE = DiffusionPipeline.from_pretrained(args.model).to(args.device)
+        else:
+            _SHARED_PIPE = DiffusionPipeline.from_pretrained(args.model, device_map='balanced')
+            cache_dit.enable_cache(_SHARED_PIPE)
     assert isinstance(_SHARED_PIPE, DiffusionPipeline), "pipeline init error, don't forget to assign pipeline to pipe var"
+
