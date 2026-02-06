@@ -47,10 +47,10 @@ def parse_args():
         help="Define the inference step benchmark. For hd, the benchmark value is 10. In the actual deployment, 10 is multiplied by this value and rounded up."
     )
     parser.add_argument(
-        "--disbale-duplicate-scheduler",
+        "--disable-duplicate-scheduler",
         type=bool,
         default=False,
-        help="Whether to resolve https://github.com/huggingface/diffusers/issues/3672, fo HiDreams, use True",
+        help="Whether to resolve https://github.com/huggingface/diffusers/issues/3672, for HiDreams, use True",
     )
     parser.add_argument(
         "--logging-level",

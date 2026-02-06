@@ -20,7 +20,7 @@ def init_config(args):
         device=args.device,
         served_model_name=args.served_model_name,
         steps_scale=args.steps_scale,
-        duplicate_scheduler=not args.disbale_duplicate_scheduler,
+        duplicate_scheduler=not args.disable_duplicate_scheduler,
     )
 
 def get_config():

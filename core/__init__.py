@@ -34,6 +34,10 @@ def init_pipeline(args):
             _SHARED_PIPE = DiffusionPipeline.from_pretrained(args.model).to(args.device)
         else:
             _SHARED_PIPE = DiffusionPipeline.from_pretrained(args.model, device_map='balanced')
-            cache_dit.enable_cache(_SHARED_PIPE)
+            try:
+                cache_dit.enable_cache(_SHARED_PIPE)
+            except Exception as e:
+                print(f"[INFO] cache_dit not enabled (model not DiT?): {e}")
+
     assert isinstance(_SHARED_PIPE, DiffusionPipeline), "pipeline init error, don't forget to assign pipeline to pipe var"
 
